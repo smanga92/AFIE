@@ -1,0 +1,477 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://afie.engine/schema/AnalysedStory/v1",
+  "title": "AnalysedStory",
+  "description": "The complete, structured output of one AFIE intelligence story. This is the contract between the engine and the UI. The UI renders this object. The engine produces it.",
+  "type": "object",
+  "required": [
+    "id", "slug", "schemaVersion", "title", "status", "createdAt", "updatedAt",
+    "versionNumber", "executiveSummary", "pass1", "pass2", "confidence",
+    "timeline", "sources", "affectedAssets"
+  ],
+  "properties": {
+
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Stable unique identifier. Never changes across updates."
+    },
+
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "description": "Human-readable kebab-case identifier. Example: us-china-tariff-2026"
+    },
+
+    "schemaVersion": {
+      "type": "string",
+      "description": "Schema version for forward compatibility. Example: 1.0"
+    },
+
+    "title": {
+      "type": "string",
+      "description": "The current best headline for this story. Updated when a significantly better framing emerges."
+    },
+
+    "status": {
+      "type": "string",
+      "enum": [
+        "breaking",
+        "developing",
+        "proposal",
+        "negotiation",
+        "awaiting_decision",
+        "confirmed",
+        "implemented",
+        "continuation",
+        "resolved",
+        "cancelled",
+        "unknown"
+      ],
+      "description": "Current lifecycle state of the story."
+    },
+
+    "statusReason": {
+      "type": "string",
+      "description": "One sentence explaining why this status was assigned."
+    },
+
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the story was first detected."
+    },
+
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the story was last updated by the engine."
+    },
+
+    "versionNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "How many times this story has been updated. Starts at 1."
+    },
+
+    "isFirstVersion": {
+      "type": "boolean",
+      "description": "True if this is the initial analysis. False on all updates."
+    },
+
+    "executiveSummary": {
+      "type": "string",
+      "description": "30-second summary. What happened, who announced it, current status. No market interpretation."
+    },
+
+    "whatChangedSinceLastUpdate": {
+      "type": "string",
+      "description": "Present only on updates (versionNumber > 1). Describes only new information. The user should understand the delta without re-reading the full story."
+    },
+
+    "pass1": {
+      "type": "object",
+      "description": "Output of the Fact Collection Engine. Contains only verifiable information. No market interpretation.",
+      "required": ["facts", "articleCount", "publishersSeen", "dateRangeOfArticles"],
+      "properties": {
+
+        "facts": {
+          "type": "array",
+          "description": "Ordered list of verified facts extracted from source articles.",
+          "items": {
+            "type": "object",
+            "required": ["id", "factText", "category", "sourceArticleIds", "isOfficial", "isContested"],
+            "properties": {
+              "id": { "type": "string" },
+              "factText": {
+                "type": "string",
+                "description": "The fact as it was reported. Verbatim or very close paraphrase of source. No interpretation."
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "interest_rate_decision",
+                  "inflation_data",
+                  "employment_data",
+                  "gdp_data",
+                  "central_bank_speech",
+                  "government_policy",
+                  "tariff_announcement",
+                  "trade_agreement",
+                  "geopolitical_event",
+                  "military_event",
+                  "sanctions",
+                  "corporate_announcement",
+                  "etf_approval",
+                  "regulation",
+                  "commodity_supply",
+                  "energy_event",
+                  "election_result",
+                  "economic_release",
+                  "peace_negotiation",
+                  "other"
+                ]
+              },
+              "sourceArticleIds": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "IDs of articles that report this fact."
+              },
+              "isOfficial": {
+                "type": "boolean",
+                "description": "True if sourced from an official government, central bank, or regulatory body."
+              },
+              "officialBody": {
+                "type": "string",
+                "description": "Name of the official body if isOfficial is true. Example: Federal Reserve, Bank of Japan."
+              },
+              "isContested": {
+                "type": "boolean",
+                "description": "True if different sources report this fact differently."
+              },
+              "contestNote": {
+                "type": "string",
+                "description": "If isContested, explains what the disagreement is."
+              },
+              "dateReported": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
+
+        "articleCount": {
+          "type": "integer",
+          "description": "Total number of unique articles contributing to this story."
+        },
+
+        "publishersSeen": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of publisher names that have covered this story."
+        },
+
+        "dateRangeOfArticles": {
+          "type": "object",
+          "properties": {
+            "earliest": { "type": "string", "format": "date-time" },
+            "latest": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+
+    "pass2": {
+      "type": "object",
+      "description": "Output of the Market Reasoning Engine. Contains AI analysis built strictly on Pass 1 facts.",
+      "required": ["detailedAnalysis", "contradictions", "futureWatchPoints"],
+      "properties": {
+
+        "detailedAnalysis": {
+          "type": "object",
+          "required": ["whatHappened", "whyItMatters", "whoAnnounced", "isOfficialAnnouncement",
+                       "isProposalOnly", "wasMarketExpecting", "didMarketSurprise",
+                       "isLikelyToContinue"],
+          "properties": {
+            "whatHappened": {
+              "type": "string",
+              "description": "Narrative explanation of the event. Draws from Pass 1 facts only."
+            },
+            "whyItMatters": {
+              "type": "string",
+              "description": "Why markets or the broader economy care about this event."
+            },
+            "whoAnnounced": {
+              "type": "string",
+              "description": "The entity or entities responsible for the announcement or event."
+            },
+            "isOfficialAnnouncement": {
+              "type": "boolean"
+            },
+            "isProposalOnly": {
+              "type": "boolean",
+              "description": "True if this is a proposal that has not yet been enacted."
+            },
+            "wasMarketExpecting": {
+              "type": "boolean",
+              "description": "Whether the event was broadly anticipated before announcement."
+            },
+            "didMarketSurprise": {
+              "type": "boolean"
+            },
+            "isProbablyPricedIn": {
+              "type": "boolean",
+              "description": "AI assessment of whether markets have likely already absorbed this information."
+            },
+            "pricedInReasoning": {
+              "type": "string",
+              "description": "Explanation of the priced-in assessment."
+            },
+            "isLikelyToContinue": {
+              "type": "boolean",
+              "description": "Whether the story is expected to develop further."
+            },
+            "continuationReasoning": {
+              "type": "string"
+            }
+          }
+        },
+
+        "contradictions": {
+          "type": "array",
+          "description": "Cases where reputable sources present differing interpretations.",
+          "items": {
+            "type": "object",
+            "required": ["id", "description", "perspectiveA", "perspectiveB"],
+            "properties": {
+              "id": { "type": "string" },
+              "description": { "type": "string" },
+              "perspectiveA": {
+                "type": "object",
+                "properties": {
+                  "position": { "type": "string" },
+                  "sourceNames": { "type": "array", "items": { "type": "string" } },
+                  "articleIds": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              "perspectiveB": {
+                "type": "object",
+                "properties": {
+                  "position": { "type": "string" },
+                  "sourceNames": { "type": "array", "items": { "type": "string" } },
+                  "articleIds": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              "afieNote": {
+                "type": "string",
+                "description": "AFIE acknowledgment of the disagreement. Does not resolve it."
+              }
+            }
+          }
+        },
+
+        "futureWatchPoints": {
+          "type": "array",
+          "description": "Events or data releases the user should monitor for this story to develop.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "event": { "type": "string" },
+              "expectedDate": { "type": "string" },
+              "significance": { "type": "string" },
+              "affectedAssets": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+
+    "affectedAssets": {
+      "type": "array",
+      "description": "Watchlist assets that may be affected by this story. Only includes assets with a reasonable connection.",
+      "items": {
+        "type": "object",
+        "required": ["symbol", "impactStrength", "possibleDirection", "reasoning",
+                     "confidence", "supportingFactIds"],
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "description": "The asset symbol. Example: XAUUSD, BTCUSD, NAS100"
+          },
+          "impactStrength": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "How significantly this story may affect the asset."
+          },
+          "possibleDirection": {
+            "type": "string",
+            "enum": ["potentially_bullish", "potentially_bearish", "mixed", "minimal"],
+            "description": "Directional bias. Always probabilistic — never certain."
+          },
+          "directionCaveats": {
+            "type": "string",
+            "description": "Qualifications on the direction. Conflicting factors, conditions, dependencies."
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "Why this asset may be affected. The mechanism of impact."
+          },
+          "isImpactImmediate": {
+            "type": "boolean",
+            "description": "Whether impact is expected to manifest quickly or over time."
+          },
+          "timingNote": {
+            "type": "string",
+            "description": "Explanation of expected timing if relevant."
+          },
+          "conditionsToStrengthenImpact": {
+            "type": "string",
+            "description": "What would make this story more impactful for this asset."
+          },
+          "conditionsToWeakenImpact": {
+            "type": "string",
+            "description": "What would reduce or reverse the expected impact."
+          },
+          "confidence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Confidence in this asset impact assessment. 0-100."
+          },
+          "supportingFactIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "IDs of Pass 1 facts that support this impact assessment."
+          }
+        }
+      }
+    },
+
+    "confidence": {
+      "type": "object",
+      "description": "Confidence in the STORY itself — not confidence in the AI. Based on source quality and consistency.",
+      "required": ["overallScore", "label", "breakdown", "explanation"],
+      "properties": {
+        "overallScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "label": {
+          "type": "string",
+          "enum": ["very_high", "high", "medium", "low", "very_low", "insufficient_data"]
+        },
+        "breakdown": {
+          "type": "object",
+          "properties": {
+            "sourceCount": { "type": "integer" },
+            "independentSourceCount": { "type": "integer" },
+            "hasOfficialSource": { "type": "boolean" },
+            "publisherReliabilityScore": { "type": "number", "minimum": 0, "maximum": 1 },
+            "crossSourceConsistency": { "type": "number", "minimum": 0, "maximum": 1 },
+            "storyMaturity": { "type": "string", "enum": ["new", "developing", "mature"] },
+            "missingKeyInformation": { "type": "boolean" },
+            "hasContradictions": { "type": "boolean" }
+          }
+        },
+        "explanation": {
+          "type": "string",
+          "description": "Plain language explanation of why this confidence score was assigned."
+        }
+      }
+    },
+
+    "timeline": {
+      "type": "array",
+      "description": "Append-only chronological history of all events in this story.",
+      "items": {
+        "type": "object",
+        "required": ["entryId", "date", "eventText", "type"],
+        "properties": {
+          "entryId": { "type": "string" },
+          "date": { "type": "string", "format": "date-time" },
+          "eventText": {
+            "type": "string",
+            "description": "Plain language description of what happened on this date."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["initial", "update", "confirmation", "escalation", "de_escalation",
+                     "resolution", "reversal", "data_release", "speech", "policy_change"]
+          },
+          "sourceArticleIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "isNew": {
+            "type": "boolean",
+            "description": "True if this entry was added in the current version update."
+          }
+        }
+      }
+    },
+
+    "sources": {
+      "type": "array",
+      "description": "All source articles that contributed to this story.",
+      "items": {
+        "type": "object",
+        "required": ["id", "headline", "publisher", "url", "publishedAt", "reliabilityTier"],
+        "properties": {
+          "id": { "type": "string" },
+          "headline": { "type": "string" },
+          "publisher": { "type": "string" },
+          "author": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "publishedAt": { "type": "string", "format": "date-time" },
+          "category": { "type": "string" },
+          "reliabilityTier": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "1 = highest reliability (official government/central bank). 5 = unverified."
+          },
+          "contributedFacts": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "IDs of Pass 1 facts this article contributed."
+          },
+          "isAddedInCurrentVersion": { "type": "boolean" }
+        }
+      }
+    },
+
+    "versionHistory": {
+      "type": "array",
+      "description": "Compact record of all previous versions for audit trail.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "versionNumber": { "type": "integer" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "summaryAtVersion": { "type": "string" },
+          "statusAtVersion": { "type": "string" },
+          "confidenceAtVersion": { "type": "integer" },
+          "triggerArticleCount": { "type": "integer" },
+          "whatChanged": { "type": "string" }
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "engineVersion": { "type": "string" },
+        "pass1DurationMs": { "type": "integer" },
+        "pass2DurationMs": { "type": "integer" },
+        "totalArticlesProcessed": { "type": "integer" },
+        "duplicatesRemoved": { "type": "integer" },
+        "clusteredFromStories": { "type": "integer" },
+        "aiModelUsed": { "type": "string" },
+        "isTestOutput": { "type": "boolean" }
+      }
+    }
+
+  }
+}
